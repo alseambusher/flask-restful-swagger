@@ -28,26 +28,25 @@ def docs(api, apiVersion='0.0', swaggerVersion='1.2',
 
   api_add_resource = api.add_resource
 
-  def add_resource(resource, *urls, **kvargs):
+  def add_resource(resource, path, *args, **kvargs):
     register_once(api, api_add_resource, apiVersion, swaggerVersion, basePath,
                   resourcePath, produces, api_spec_url, description)
 
     resource = make_class(resource)
-    for url in urls:
-      endpoint = swagger_endpoint(api, resource, url)
+    endpoint = swagger_endpoint(api, resource, path)
 
-      # Add a .help.json help url
-      swagger_path = extract_swagger_path(url)
+    # Add a .help.json help url
+    swagger_path = extract_swagger_path(path)
 
-      # Add a .help.html help url
-      endpoint_html_str = '{0}/help'.format(swagger_path)
-      api_add_resource(
-        endpoint,
-        "{0}.help.json".format(swagger_path),
-        "{0}.help.html".format(swagger_path),
-        endpoint=endpoint_html_str)
+    # Add a .help.html help url
+    endpoint_html_str = '{0}/help'.format(swagger_path)
+    api_add_resource(
+      endpoint,
+      "{0}.help.json".format(swagger_path),
+      "{0}.help.html".format(swagger_path),
+      endpoint=endpoint_html_str)
 
-    return api_add_resource(resource, *urls, **kvargs)
+    return api_add_resource(resource, path, *args, **kvargs)
 
   api.add_resource = add_resource
 
@@ -168,19 +167,17 @@ def _get_current_registry(api=None):
   reg = registry.setdefault(app_name, {})
   reg.update(overrides)
 
-  reg['basePath'] = reg['basePath'] + (reg.get('x-api-prefix', '') or '')
+  reg['basePath'] = reg['basePath'] + reg.get('x-api-prefix', '')
+  reg['basePath'] = reg["basePath"].replace("http://localhost:5000/", "/")
 
   return reg
 
 
 def render_page(page, info):
   req_registry = _get_current_registry()
-  url = req_registry['basePath']
-  if url.endswith('/'):
-    url = url.rstrip('/')
   conf = {
-    'base_url': url + api_spec_static,
-    'full_base_url': url + api_spec_static
+    'base_url': api_spec_static,
+    'full_base_url': api_spec_static
   }
   if info is not None:
     conf.update(info)
@@ -194,7 +191,11 @@ def render_page(page, info):
   mime = 'text/html'
   if page.endswith('.js'):
     mime = 'text/javascript'
-  return Response(template.render(conf), mimetype=mime)
+  if not page.endswith("swagger-ui.js"):
+    template = template.render(conf).replace("http://localhost:5000/", "/") 
+  else:
+    template = template.render(conf)
+  return Response(template, mimetype=mime)
 
 
 class StaticFiles(Resource):
@@ -340,7 +341,7 @@ class SwaggerRegistry(Resource):
     req_registry = _get_current_registry()
     if request.path.endswith('.html'):
       return render_homepage(
-        req_registry['basePath'] + req_registry['spec_endpoint_path'] + '/_/resource_list.json')
+        req_registry['spec_endpoint_path'] + '/_/resource_list.json')
     return req_registry
 
 

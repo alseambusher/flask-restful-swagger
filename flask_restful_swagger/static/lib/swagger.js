@@ -343,6 +343,9 @@ var SwaggerResource = function(resourceObj, api) {
     } else {
       this.url = this.api.basePath + this.path.replace('{format}', 'json');
     }
+
+    //@alse Have added the following line to remove http://localhost:5000
+    this.url = this.url.replace("http://localhost:5000/","/");
     this.api.progress('fetching resource ' + this.name + ': ' + this.url);
     obj = {
       url: this.url,
@@ -898,7 +901,9 @@ SwaggerOperation.prototype.encodePathParam = function(pathParam) {
 };
 
 SwaggerOperation.prototype.urlify = function(args) {
-  var url = this.resource.basePath + this.pathJson();
+  //@alse was here
+  //var url = this.resource.basePath + this.pathJson();
+  var url = window.location.origin + this.pathJson();
   var params = this.parameters;
   for(var i = 0; i < params.length; i ++){
     var param = params[i];
